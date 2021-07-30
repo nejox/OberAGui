@@ -3,6 +3,7 @@ import pandas as pd
 import PySimpleGUI as sg
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 import json
 from datetime import datetime
 import matplotlib
@@ -11,9 +12,11 @@ matplotlib.use('TkAgg')
 SETTINGS_FILEPATH = './settings.json'
 DATA_FILEPATH = "./data.csv"
 
-config = {}
-products = []
-ruestData = []
+#config = {}
+#products = []
+#ruestData = []
+settingsChanged = False
+pathChanged = False
 
 def generateData():
     from numpy.random import seed
@@ -61,6 +64,7 @@ def checkInputs(values):
     return True
 
 def updateSettings(values):
+
     config["filePath"] = values['-INPUT_FILE-']
     config["dg"] = int(values['-INPUT_DG-'])
     config["g"] = int(values['-INPUT_G-'])
@@ -92,50 +96,73 @@ def showSettings():
 
         if event == 'Apply':
             if checkInputs(values):
+                global settingsChanged
+                settingsChanged = True
+                oldPath = config["filePath"]
                 updateSettings(values)
+
+                #update Data and update graphs
+                if oldPath != config["filePath"]:
+                    print("path changed")
+                    global pathChanged
+                    pathChanged = True
+
                 window.close()
                 break
         else:
             window.close()
             break
 
+def processData(filePath):
+    rslt = []
+    products = []
+    try:
+        df = pd.read_csv(filePath, sep=";")
 
-def processData(df):
-    products = df.Material.unique().tolist()
-    products.sort()
-    rslt = [[] for i in range(len(products)*len(products))]
-    oldProd = 'A'
-    for index, row in df.iterrows():
-        i = len(products) * products.index(oldProd)
-        j = products.index(row.Material)
-        newI = i + j
-        rslt[newI].append(row.Duration)
-        oldProd = row.Material
+        products = df.Material.unique().tolist()
+        products.sort()
+        rslt = [[] for i in range(len(products)*len(products))]
+        #TODO: Wissen welches Produkt davor war
+        oldProd = 'A'
+        for index, row in df.iterrows():
+            i = len(products) * products.index(oldProd)
+            j = products.index(row.Material)
+            newI = i + j
+            rslt[newI].append(row.Duration)
+            oldProd = row.Material
+
+    except Exception:
+        sg.popup_error("Could not open/read file:", filePath)
+
     return rslt, products
 
-
 def readDefaults(products):
-    defaults = {}
-    df = pd.read_csv("./defaultValues.csv",sep=";")
-    for index, row in df.iterrows():
-        defaults[row.From+row.To] = row.Duration
-        newI = len(products) * products.index(row.From)+products.index(row.To)
-        defaults[newI] = row.Duration
 
-    return defaults
+    ldefaults = {}
+    if len(products) > 0:
+        df = pd.read_csv("./defaultValues.csv",sep=";")
+        for index, row in df.iterrows():
+            ldefaults[row.From+row.To] = row.Duration
+            try:
+                newI = len(products) * products.index(row.From)+products.index(row.To)
+                ldefaults[newI] = row.Duration
+            except ValueError:
+                continue
 
+    return ldefaults
 
 def onInit():
-    df = generateData()
-    data, products = processData(df)
-    defaultVals = readDefaults(products)
     # read settings
     with open(SETTINGS_FILEPATH) as file:
         config = json.load(file)
+
+    data, products = processData(config["filePath"])
+    defaultVals = readDefaults(products)
+
     return config, data, products, defaultVals
 
-
 def draw_figure(canvas, figure):
+    print("drawFigure",figure)
     figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
     figure_canvas_agg.draw()
     figure_canvas_agg.get_tk_widget().pack(side='top', fill='both', expand=1)
@@ -144,41 +171,76 @@ def draw_figure(canvas, figure):
 def getFigureMaster():
 
     n = len(products)
-    fig, ax = plt.subplots(n,n, figsize=(7,7))
-    t = np.arange(0, 3, .01)
 
-    for i in range(0,n):
-        for j in range(0,n):
+    if n > 0:
+        fig, ax = plt.subplots(n,n, figsize=(7,7))
 
-            if i != j:
-                #ax[i][j].plot(t, 2 * np.sin(2 * np.pi * t))
-                ax[i][j].hist(ruestData[i*n+j],color="red",bins=15)#, density=True)#weights=np.zeros_like(ruestData[i*n+j]) + 1. / len(ruestData[i*n+j]))
-                ax[i][j].xaxis.set_major_locator(plt.MultipleLocator(10))
-                ax[i][j].axvline(defaults[i*n+j], color="blue",linewidth=2)
-            else:
-                ax[i][j].xaxis.set_ticks([])
-                ax[i][j].yaxis.set_ticks([])
+        for i in range(0, n):
+            for j in range(0, n):
 
-            if i == 0:
-                ax[i][j].set_title('Product '+products[j])
-            if j == 0:
-                ax[i][j].set(ylabel='Product '+products[i])
+                if i != j:
+                    ax[i][j].hist(ruestData[i * n + j], color="black",
+                                  bins=15)  # , density=True)#weights=np.zeros_like(ruestData[i*n+j]) + 1. / len(ruestData[i*n+j]))
+                    ax[i][j].xaxis.set_major_locator(plt.MultipleLocator(10))
+                    ax[i][j].axvline(defaults[i * n + j], color="cyan", linewidth=2)
+
+                    # calculate abweichung
+                    mean = np.array(ruestData[i * n + j]).mean()
+                    d = defaults[i * n + j]
+                    percent = (mean - d) / mean * 100
+
+                    if (percent <= config["dg"]):
+                        ax[i][j].set_facecolor('xkcd:olive green')
+                    elif (percent <= config["g"]):
+                        ax[i][j].set_facecolor('xkcd:grey green')
+                    elif (percent <= config["y"]):
+                        ax[i][j].set_facecolor('xkcd:light yellow')
+                    else:
+                        ax[i][j].set_facecolor('xkcd:dark pink')
+
+                else:
+                    ax[i][j].xaxis.set_ticks([])
+                    ax[i][j].yaxis.set_ticks([])
+
+                if i == 0:
+                    ax[i][j].set_title('Product ' + products[j] , size=12)
+                if j == 0:
+                    #ax[i][j].set(ylabel='Product ' + products[i])
+                    ax[i][j].set_ylabel('Product ' + products[i], size=12)
+    else:
+        fig, ax = plt.subplots(1, 1, figsize=(7, 7))
+    fig.align_ylabels(ax[:, 0])
+    fig.tight_layout()
     return fig
 
 def getFigureDetail(fromP,toP):
-    newI = len(products) * products.index(fromP) + products.index(toP)
-
-    fig = plt.figure()
-    plt.hist(ruestData[newI], color="red", bins=15)
-    plt.axvline(defaults[newI], color="blue", linewidth=2)
+    #plt.cla()
+    fig = Figure() #plt.figure()
+    ax = fig.add_subplot(111)
+    if len(products) > 0:
+        newI = len(products) * products.index(fromP) + products.index(toP)
+        ax.hist(ruestData[newI], color="black", bins=15)
+        try:
+            ax.axvline(defaults[newI], color="cyan", linewidth=2)
+        except ValueError:
+            print(newI)
+            print(defaults)
 
     return fig
 
-def updateFigure(fromP, toP):
-    plt.clf()
-    newI = len(products) * products.index(fromP) + products.index(toP)
-    plt.hist(ruestData[newI], color="red", bins=15)
-    plt.axvline(defaults[newI], color="blue", linewidth=2)
+def updateDetail(fromP, toP):
+    figDetail.clear()
+    ax = figDetail.add_subplot(111)
+    if len(products) > 0:
+        newI = len(products) * products.index(fromP) + products.index(toP)
+        ax.hist(ruestData[newI], color="black", bins=15)
+        ax.axvline(defaults[newI], color="cyan", linewidth=2)
+
+def showMaster():
+    figMaster, ax = getFigureMaster()
+    plt.close(figMaster)
+    figAgg_Master = draw_figure(window['-CANVAS_MASTER-'].TKCanvas, figMaster)
+
 
 if __name__ == '__main__':
 
@@ -192,8 +254,8 @@ if __name__ == '__main__':
     detailCol = [#[sg.Text("Detail View - Ist/Soll Graph here")],
                  [sg.Canvas(key='-CANVAS_DETAIL-')],
                  [sg.Text("Rüsten von:",size=(15,1),pad=((100,45),0)), sg.Text("Rüsten auf:",size=(15,1))],
-                 [sg.InputCombo(products, default_value='A', key="-COMBO_FROM-", size=(12,1), pad=((100,70),0), enable_events=True),
-                  sg.InputCombo(products, default_value='B', key="-COMBO_TO-", size=(12,1), enable_events=True)]
+                 [sg.InputCombo(products, default_value=products[0], key="-COMBO_FROM-", size=(12,1), pad=((100,70),0), enable_events=True),
+                  sg.InputCombo(products, default_value=products[1], key="-COMBO_TO-", size=(12,1), enable_events=True)]
                  #[sg.Button()]
                  ]
 
@@ -205,26 +267,48 @@ if __name__ == '__main__':
     ]
     window = sg.Window('Matrix Viewer', layout, size=(1280, 720), finalize=True)
 
-    draw_figure(window['-CANVAS_MASTER-'].TKCanvas, getFigureMaster())
+    figMaster = getFigureMaster()
+    masterCanvas = draw_figure(window['-CANVAS_MASTER-'].TKCanvas, figMaster)
+
     fromP = window["-COMBO_FROM-"].DefaultValue
     toP = window["-COMBO_TO-"].DefaultValue
-    fig = getFigureDetail(fromP,toP)
-    fig_agg = draw_figure(window['-CANVAS_DETAIL-'].TKCanvas, fig)
+
+    figDetail = getFigureDetail(fromP,toP)
+    detailCanvas = draw_figure(window['-CANVAS_DETAIL-'].TKCanvas, figDetail)
 
     while True:
         event, values = window.read()
-        print(event, values)
-        print(values['-COMBO_FROM-'])
-        print(values['-COMBO_TO-'])
 
         if event == sg.WIN_CLOSED or event == 'Cancel':  # if user closes window or clicks cancel
             break
         if event == '-COMBO_TO-' or event == '-COMBO_FROM-':
             if values['-COMBO_FROM-'] != values['-COMBO_TO-']:
-                updateFigure(values['-COMBO_FROM-'], values['-COMBO_TO-'])
-                fig_agg.draw()
+                print("updating detail")
+                updateDetail(values['-COMBO_FROM-'], values['-COMBO_TO-'])
+                #detailCanvas.figure = getFigureDetail(values['-COMBO_FROM-'], values['-COMBO_TO-'])
+                #detailCanvas.get_tk_widget().pack(side='top', fill='both', expand=1)
+                detailCanvas.draw()
+                #detailCanvas.draw_idle()
+
         if event == 'Settings':
             showSettings()
+
+        if pathChanged:
+            pathChanged = False
+            print("updating data")
+            ruestData, products = processData(config["filePath"])
+            defaults = readDefaults(products)
+            window["-COMBO_FROM-"].update(value=products[0], values=products)
+            window["-COMBO_TO-"].update(value=products[1], values=products)
+
+        if settingsChanged:
+            settingsChanged = False
+            print("updating master")
+            masterCanvas.figure = getFigureMaster()
+            masterCanvas.draw()
+            
+            updateDetail(window["-COMBO_FROM-"].DefaultValue, window['-COMBO_TO-'].DefaultValue)
+            detailCanvas.draw()
 
     window.close()
 
