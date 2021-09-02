@@ -9,7 +9,8 @@ from datetime import datetime
 import matplotlib
 matplotlib.use('TkAgg')
 
-SETTINGS_FILEPATH = './settings.json'
+SETTINGS_FILEPATH = 'config/settings.json'
+DEFAULTS_FILEPATH = 'config/defaultValues.csv'
 DATA_FILEPATH = "./data.csv"
 
 #config = {}
@@ -103,7 +104,6 @@ def showSettings():
 
                 #update Data and update graphs
                 if oldPath != config["filePath"]:
-                    print("path changed")
                     global pathChanged
                     pathChanged = True
 
@@ -140,7 +140,7 @@ def readDefaults(products):
 
     ldefaults = {}
     if len(products) > 0:
-        df = pd.read_csv("./defaultValues.csv",sep=";")
+        df = pd.read_csv(DEFAULTS_FILEPATH, sep=";")
         for index, row in df.iterrows():
             ldefaults[row.From+row.To] = row.Duration
             try:
@@ -162,7 +162,6 @@ def onInit():
     return config, data, products, defaultVals
 
 def draw_figure(canvas, figure):
-    print("drawFigure",figure)
     figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
     figure_canvas_agg.draw()
     figure_canvas_agg.get_tk_widget().pack(side='top', fill='both', expand=1)
@@ -220,11 +219,7 @@ def getFigureDetail(fromP,toP):
     if len(products) > 0:
         newI = len(products) * products.index(fromP) + products.index(toP)
         ax.hist(ruestData[newI], color="black", bins=15)
-        try:
-            ax.axvline(defaults[newI], color="cyan", linewidth=2)
-        except ValueError:
-            print(newI)
-            print(defaults)
+        ax.axvline(defaults[newI], color="cyan", linewidth=2)
 
     return fig
 
@@ -283,7 +278,6 @@ if __name__ == '__main__':
             break
         if event == '-COMBO_TO-' or event == '-COMBO_FROM-':
             if values['-COMBO_FROM-'] != values['-COMBO_TO-']:
-                print("updating detail")
                 updateDetail(values['-COMBO_FROM-'], values['-COMBO_TO-'])
                 #detailCanvas.figure = getFigureDetail(values['-COMBO_FROM-'], values['-COMBO_TO-'])
                 #detailCanvas.get_tk_widget().pack(side='top', fill='both', expand=1)
@@ -295,7 +289,6 @@ if __name__ == '__main__':
 
         if pathChanged:
             pathChanged = False
-            print("updating data")
             ruestData, products = processData(config["filePath"])
             defaults = readDefaults(products)
             window["-COMBO_FROM-"].update(value=products[0], values=products)
@@ -303,7 +296,6 @@ if __name__ == '__main__':
 
         if settingsChanged:
             settingsChanged = False
-            print("updating master")
             masterCanvas.figure = getFigureMaster()
             masterCanvas.draw()
             
