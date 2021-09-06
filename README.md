@@ -1,4 +1,4 @@
-# HIWIGui
+# OberAGui
 
 Small Python GUI for the OberA Project to visualize different Arming Procedures of products and stuff.
 
