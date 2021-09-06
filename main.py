@@ -1,45 +1,20 @@
+from Config import *
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
+from matplotlib.ticker import FuncFormatter
+from matplotlib.ticker import MultipleLocator
+from datetime import datetime
+import matplotlib.pyplot as plt
+import PySimpleGUI as sg
 import numpy as np
 import pandas as pd
-import PySimpleGUI as sg
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
 import json
-from datetime import datetime
 import matplotlib
+
 matplotlib.use('TkAgg')
 
-SETTINGS_FILEPATH = 'config/settings.json'
-DEFAULTS_FILEPATH = 'config/defaultValues.csv'
-DATA_FILEPATH = "./data.csv"
-
-#config = {}
-#products = []
-#ruestData = []
 settingsChanged = False
 pathChanged = False
-
-def generateData():
-    from numpy.random import seed
-    from numpy.random import randint
-    seed(1)
-    products = ['A', 'B', 'C', 'D']
-    oldKey = 0
-    data = []
-    for i in range(0,100):
-        key = 0
-        while True:
-            key = randint(0,4)
-            if key != oldKey:
-                oldKey = key
-                break
-        currentProd = products[key]
-        value = randint(15,60)
-        timestmp = datetime.now(tz=None).strftime("%d-%b-%Y %H:%M:%S")
-        data.extend([(currentProd,value,timestmp)])
-    df = pd.DataFrame(data,columns=["Material","Duration","Timestamp"])
-    df.to_csv(DATA_FILEPATH, sep=";",index=False)
-    return df
 
 def checkInputs(values):
     try:
@@ -66,31 +41,34 @@ def checkInputs(values):
 
 def updateSettings(values):
 
-    config["filePath"] = values['-INPUT_FILE-']
-    config["dg"] = int(values['-INPUT_DG-'])
-    config["g"] = int(values['-INPUT_G-'])
-    config["y"] = int(values['-INPUT_Y-'])
-    config["r"] = int(values['-INPUT_R-'])
+    settings["filePath"] = values['-INPUT_FILE-']
+    settings["dg"] = int(values['-INPUT_DG-'])
+    settings["g"] = int(values['-INPUT_G-'])
+    settings["y"] = int(values['-INPUT_Y-'])
+    settings["r"] = int(values['-INPUT_R-'])
+    settings["showAbsFrequencies"] = values['-INPUT_FREQ-']
+    settings["centerDiagrams"] = values["-INPUT_CENTERING-"]
 
     with open(SETTINGS_FILEPATH, 'w') as file:
-        json.dump(config, file)
+        json.dump(settings, file)
 
 def showSettings():
     frameLayout = [
-        [sg.Text("  Dunkelgrün", size=(12, 1)), sg.Input(default_text=config['dg'], key='-INPUT_DG-', size=(5, 1))],
-        [sg.Text("  Grün", size=(12, 1)), sg.Input(default_text=config['g'], key='-INPUT_G-', size=(5, 1))],
-        [sg.Text("  Gelb", size=(12, 1)), sg.Input(default_text=config['y'], key='-INPUT_Y-', size=(5, 1))],
-        [sg.Text("  Rot", size=(12, 1)), sg.Input(default_text=config['r'], key='-INPUT_R-', size=(5, 1))]
+        [sg.Text("  Dunkelgrün", size=(12, 1)), sg.Input(default_text=settings['dg'], key='-INPUT_DG-', size=(5, 1))],
+        [sg.Text("  Grün", size=(12, 1)), sg.Input(default_text=settings['g'], key='-INPUT_G-', size=(5, 1))],
+        [sg.Text("  Gelb", size=(12, 1)), sg.Input(default_text=settings['y'], key='-INPUT_Y-', size=(5, 1))],
+        [sg.Text("  Rot", size=(12, 1)), sg.Input(default_text=settings['r'], key='-INPUT_R-', size=(5, 1))]
     ]
 
     settingsLayout = [
         [sg.Text("CSV-File: ")],
-        [sg.InputText(default_text=config['filePath'], key='-INPUT_FILE-'), sg.FileBrowse()],
+        [sg.InputText(default_text=settings['filePath'], key='-INPUT_FILE-'), sg.FileBrowse()],
+        [sg.Checkbox("scaled Diagrams", key="-INPUT_CENTERING-", default=settings["centerDiagrams"])],
+        [sg.Checkbox("show abs. Frequencies", key="-INPUT_FREQ-", default=settings["showAbsFrequencies"])],
         [sg.Frame("Percentages",frameLayout)],
-
         [sg.Text("                                                          "), sg.Button('Apply'), sg.Button('Cancel')]
     ]
-    window = sg.Window('Settings', settingsLayout, size=(420, 230), finalize=True)
+    window = sg.Window('Settings', settingsLayout, size=(420, 300), finalize=True)
 
     while True:
         event, values = window.read()
@@ -99,11 +77,11 @@ def showSettings():
             if checkInputs(values):
                 global settingsChanged
                 settingsChanged = True
-                oldPath = config["filePath"]
+                oldPath = settings["filePath"]
                 updateSettings(values)
 
                 #update Data and update graphs
-                if oldPath != config["filePath"]:
+                if oldPath != settings["filePath"]:
                     global pathChanged
                     pathChanged = True
 
@@ -154,12 +132,12 @@ def readDefaults(products):
 def onInit():
     # read settings
     with open(SETTINGS_FILEPATH) as file:
-        config = json.load(file)
+        settings = json.load(file)
 
-    data, products = processData(config["filePath"])
+    data, products = processData(settings["filePath"])
     defaultVals = readDefaults(products)
 
-    return config, data, products, defaultVals
+    return settings, data, products, defaultVals
 
 def draw_figure(canvas, figure):
     figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
@@ -172,27 +150,26 @@ def getFigureMaster():
     n = len(products)
 
     if n > 0:
-        fig, ax = plt.subplots(n,n, figsize=(7,7))
+        fig, ax = plt.subplots(n,n, figsize=(7,6))
 
         for i in range(0, n):
             for j in range(0, n):
 
                 if i != j:
-                    ax[i][j].hist(ruestData[i * n + j], color="black",
-                                  bins=15)  # , density=True)#weights=np.zeros_like(ruestData[i*n+j]) + 1. / len(ruestData[i*n+j]))
-                    ax[i][j].xaxis.set_major_locator(plt.MultipleLocator(10))
-                    ax[i][j].axvline(defaults[i * n + j], color="cyan", linewidth=2)
+                    dataIndex = i * n + j
 
-                    # calculate abweichung
-                    mean = np.array(ruestData[i * n + j]).mean()
-                    d = defaults[i * n + j]
+                    setHistogram(ax[i][j], ruestData[dataIndex], defaults[dataIndex])
+
+                    # calculate divergence
+                    mean = np.array(ruestData[dataIndex]).mean()
+                    d = defaults[dataIndex]
                     percent = (mean - d) / mean * 100
 
-                    if (percent <= config["dg"]):
+                    if (percent <= settings["dg"]):
                         ax[i][j].set_facecolor('xkcd:olive green')
-                    elif (percent <= config["g"]):
+                    elif (percent <= settings["g"]):
                         ax[i][j].set_facecolor('xkcd:grey green')
-                    elif (percent <= config["y"]):
+                    elif (percent <= settings["y"]):
                         ax[i][j].set_facecolor('xkcd:light yellow')
                     else:
                         ax[i][j].set_facecolor('xkcd:dark pink')
@@ -202,9 +179,8 @@ def getFigureMaster():
                     ax[i][j].yaxis.set_ticks([])
 
                 if i == 0:
-                    ax[i][j].set_title('Product ' + products[j] , size=12)
+                    ax[i][j].set_title('Product ' + products[j], size=12)
                 if j == 0:
-                    #ax[i][j].set(ylabel='Product ' + products[i])
                     ax[i][j].set_ylabel('Product ' + products[i], size=12)
     else:
         fig, ax = plt.subplots(1, 1, figsize=(7, 7))
@@ -213,45 +189,66 @@ def getFigureMaster():
     return fig
 
 def getFigureDetail(fromP,toP):
-    #plt.cla()
-    fig = Figure() #plt.figure()
+    fig = Figure(figsize=(6,5))
     ax = fig.add_subplot(111)
     if len(products) > 0:
-        newI = len(products) * products.index(fromP) + products.index(toP)
-        ax.hist(ruestData[newI], color="black", bins=15)
-        ax.axvline(defaults[newI], color="cyan", linewidth=2)
+        dataIndex = len(products) * products.index(fromP) + products.index(toP)
+        setHistogram(ax, ruestData[dataIndex], defaults[dataIndex], False)
+        fig.tight_layout()
 
     return fig
+
+def major_formatter(x, pos):
+    return "%.2f" % x
+
+def setHistogram(ax, data, defaultVal, isMaster=True):
+    if settings["showAbsFrequencies"]:
+        ax.hist(data, color="black", bins=BINS)
+        if not isMaster:
+            ax.set_ylabel(DETAIL_YAXIS_LABEL_ABS, size=12)
+            ax.set_xlabel(DETAIL_XAXIS_LABEL, size=12)
+    else:
+        weights = np.zeros_like(data) + 1. / len(data)  # 100 for percentages
+        ax.hist(data, weights=weights, color="black", bins=BINS)
+        if not isMaster:
+            ax.yaxis.set_major_formatter(FuncFormatter(major_formatter))
+            ax.set_ylabel(DETAIL_YAXIS_LABEL_REL, size=12)
+            ax.set_xlabel(DETAIL_XAXIS_LABEL, size=12)
+
+    ax.xaxis.set_major_locator(MultipleLocator(10))
+    ax.axvline(defaultVal, color="cyan", linewidth=2)
+    if settings["centerDiagrams"]:
+        maxVal = max(np.amax(ruestData))
+        list = np.amin(ruestData)
+        minVal = 0
+        if list:
+            minVal = min(np.amin(ruestData))
+
+        maxVal = maxVal + 15 - maxVal % 15
+
+        ax.set_xlim(left=minVal, right=maxVal+1)
+        ax.set_xticks(range(minVal, maxVal+1, 15))
 
 def updateDetail(fromP, toP):
     figDetail.clear()
     ax = figDetail.add_subplot(111)
     if len(products) > 0:
-        newI = len(products) * products.index(fromP) + products.index(toP)
-        ax.hist(ruestData[newI], color="black", bins=15)
-        ax.axvline(defaults[newI], color="cyan", linewidth=2)
-
-def showMaster():
-    figMaster, ax = getFigureMaster()
-    plt.close(figMaster)
-    figAgg_Master = draw_figure(window['-CANVAS_MASTER-'].TKCanvas, figMaster)
+        dataIndex = len(products) * products.index(fromP) + products.index(toP)
+        setHistogram(ax, ruestData[dataIndex], defaults[dataIndex], False)
 
 
 if __name__ == '__main__':
 
-    config, ruestData, products, defaults = onInit()
+    settings, ruestData, products, defaults = onInit()
 
-    sg.theme('DarkGrey14')
+    sg.theme(THEME)
     menu_def = [['Edit', ['Settings']]]
 
-    masterCol = [#[sg.Text("Master View - Matrices are shown here")],
-                 [sg.Canvas(key='-CANVAS_MASTER-')]]
-    detailCol = [#[sg.Text("Detail View - Ist/Soll Graph here")],
-                 [sg.Canvas(key='-CANVAS_DETAIL-')],
+    masterCol = [[sg.Canvas(key='-CANVAS_MASTER-')]]
+    detailCol = [[sg.Canvas(key='-CANVAS_DETAIL-')],
                  [sg.Text("Rüsten von:",size=(15,1),pad=((100,45),0)), sg.Text("Rüsten auf:",size=(15,1))],
                  [sg.InputCombo(products, default_value=products[0], key="-COMBO_FROM-", size=(12,1), pad=((100,70),0), enable_events=True),
                   sg.InputCombo(products, default_value=products[1], key="-COMBO_TO-", size=(12,1), enable_events=True)]
-                 #[sg.Button()]
                  ]
 
     layout = [
@@ -260,7 +257,7 @@ if __name__ == '__main__':
          sg.VSeperator(),
          sg.Column(detailCol)]
     ]
-    window = sg.Window('Matrix Viewer', layout, size=(1280, 720), finalize=True)
+    window = sg.Window(TITLE, layout, size=(1280, 720), finalize=True)
 
     figMaster = getFigureMaster()
     masterCanvas = draw_figure(window['-CANVAS_MASTER-'].TKCanvas, figMaster)
@@ -279,17 +276,14 @@ if __name__ == '__main__':
         if event == '-COMBO_TO-' or event == '-COMBO_FROM-':
             if values['-COMBO_FROM-'] != values['-COMBO_TO-']:
                 updateDetail(values['-COMBO_FROM-'], values['-COMBO_TO-'])
-                #detailCanvas.figure = getFigureDetail(values['-COMBO_FROM-'], values['-COMBO_TO-'])
-                #detailCanvas.get_tk_widget().pack(side='top', fill='both', expand=1)
                 detailCanvas.draw()
-                #detailCanvas.draw_idle()
 
         if event == 'Settings':
             showSettings()
 
         if pathChanged:
             pathChanged = False
-            ruestData, products = processData(config["filePath"])
+            ruestData, products = processData(settings["filePath"])
             defaults = readDefaults(products)
             window["-COMBO_FROM-"].update(value=products[0], values=products)
             window["-COMBO_TO-"].update(value=products[1], values=products)
