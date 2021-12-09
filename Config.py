@@ -7,5 +7,10 @@ DETAIL_YAXIS_LABEL_ABS = "abs. frequency"
 DETAIL_YAXIS_LABEL_REL = "rel. frequency"
 BINS = 15
 #------------------File paths--------------------------
-SETTINGS_FILEPATH = 'config/settings.json'
-DEFAULTS_FILEPATH = 'config/defaultValues.csv'
+SETTINGS_FILEPATH = 'settings/settings.json'
+DEFAULTS_FILEPATH = 'settings/defaultValues.csv'
+#------------------percentage range names--------------------------
+VGOOD = "Dunkelgrün"
+GOOD = "Grün"
+OK = "Gelb"
+BAD = "Rot"

@@ -54,10 +54,10 @@ def updateSettings(values):
 
 def showSettings():
     frameLayout = [
-        [sg.Text("  Dunkelgrün", size=(12, 1)), sg.Input(default_text=settings['dg'], key='-INPUT_DG-', size=(5, 1))],
-        [sg.Text("  Grün", size=(12, 1)), sg.Input(default_text=settings['g'], key='-INPUT_G-', size=(5, 1))],
-        [sg.Text("  Gelb", size=(12, 1)), sg.Input(default_text=settings['y'], key='-INPUT_Y-', size=(5, 1))],
-        [sg.Text("  Rot", size=(12, 1)), sg.Input(default_text=settings['r'], key='-INPUT_R-', size=(5, 1))]
+        [sg.Text("  "+VGOOD, size=(12, 1)), sg.Input(default_text=settings['dg'], key='-INPUT_DG-', size=(5, 1))],
+        [sg.Text("  "+GOOD, size=(12, 1)), sg.Input(default_text=settings['g'], key='-INPUT_G-', size=(5, 1))],
+        [sg.Text("  "+OK, size=(12, 1)), sg.Input(default_text=settings['y'], key='-INPUT_Y-', size=(5, 1))],
+        [sg.Text("  "+BAD, size=(12, 1)), sg.Input(default_text=settings['r'], key='-INPUT_R-', size=(5, 1))]
     ]
 
     settingsLayout = [
