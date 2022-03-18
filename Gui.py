@@ -1,6 +1,6 @@
 
 class GuiManager:
     """
-    Class to manage the GUI i&o
+    Class to manage the GUI
     """
 

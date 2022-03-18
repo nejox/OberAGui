@@ -2,9 +2,9 @@
 THEME = "DarkGrey14"
 TITLE = "OberA: Ruest Viewer"
 #------------------Diagram stuff-----------------------
-DETAIL_XAXIS_LABEL ="Time (in Minutes)"
-DETAIL_YAXIS_LABEL_ABS = "abs. frequency"
-DETAIL_YAXIS_LABEL_REL = "rel. frequency"
+DETAIL_XAXIS_LABEL ="Rüstzeit"
+DETAIL_YAXIS_LABEL_ABS = "abs. Häufigkeit"
+DETAIL_YAXIS_LABEL_REL = "rel. Häufigkeit"
 BINS = 15
 #------------------File paths--------------------------
 SETTINGS_FILEPATH = 'settings/settings.json'

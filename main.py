@@ -1,20 +1,21 @@
+import PySimpleGUI as sg
+import json
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from Config import *
+from datetime import datetime
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
 from matplotlib.ticker import MultipleLocator
-from datetime import datetime
-import matplotlib.pyplot as plt
-import PySimpleGUI as sg
-import numpy as np
-import pandas as pd
-import json
-import matplotlib
 
 matplotlib.use('TkAgg')
 
 settingsChanged = False
 pathChanged = False
+
 
 def checkInputs(values):
     try:
@@ -39,8 +40,8 @@ def checkInputs(values):
         return False
     return True
 
-def updateSettings(values):
 
+def updateSettings(values):
     settings["filePath"] = values['-INPUT_FILE-']
     settings["dg"] = int(values['-INPUT_DG-'])
     settings["g"] = int(values['-INPUT_G-'])
@@ -52,12 +53,13 @@ def updateSettings(values):
     with open(SETTINGS_FILEPATH, 'w') as file:
         json.dump(settings, file)
 
+
 def showSettings():
     frameLayout = [
-        [sg.Text("  "+VGOOD, size=(12, 1)), sg.Input(default_text=settings['dg'], key='-INPUT_DG-', size=(5, 1))],
-        [sg.Text("  "+GOOD, size=(12, 1)), sg.Input(default_text=settings['g'], key='-INPUT_G-', size=(5, 1))],
-        [sg.Text("  "+OK, size=(12, 1)), sg.Input(default_text=settings['y'], key='-INPUT_Y-', size=(5, 1))],
-        [sg.Text("  "+BAD, size=(12, 1)), sg.Input(default_text=settings['r'], key='-INPUT_R-', size=(5, 1))]
+        [sg.Text("  " + VGOOD, size=(12, 1)), sg.Input(default_text=settings['dg'], key='-INPUT_DG-', size=(5, 1))],
+        [sg.Text("  " + GOOD, size=(12, 1)), sg.Input(default_text=settings['g'], key='-INPUT_G-', size=(5, 1))],
+        [sg.Text("  " + OK, size=(12, 1)), sg.Input(default_text=settings['y'], key='-INPUT_Y-', size=(5, 1))],
+        [sg.Text("  " + BAD, size=(12, 1)), sg.Input(default_text=settings['r'], key='-INPUT_R-', size=(5, 1))]
     ]
 
     settingsLayout = [
@@ -65,7 +67,7 @@ def showSettings():
         [sg.InputText(default_text=settings['filePath'], key='-INPUT_FILE-'), sg.FileBrowse()],
         [sg.Checkbox("scaled Diagrams", key="-INPUT_CENTERING-", default=settings["centerDiagrams"])],
         [sg.Checkbox("show abs. Frequencies", key="-INPUT_FREQ-", default=settings["showAbsFrequencies"])],
-        [sg.Frame("Percentages",frameLayout)],
+        [sg.Frame("Percentages", frameLayout)],
         [sg.Text("                                                          "), sg.Button('Apply'), sg.Button('Cancel')]
     ]
     window = sg.Window('Settings', settingsLayout, size=(420, 300), finalize=True)
@@ -80,7 +82,7 @@ def showSettings():
                 oldPath = settings["filePath"]
                 updateSettings(values)
 
-                #update Data and update graphs
+                # update Data and update graphs
                 if oldPath != settings["filePath"]:
                     global pathChanged
                     pathChanged = True
@@ -91,7 +93,9 @@ def showSettings():
             window.close()
             break
 
+
 def processData(filePath):
+    return processDataOtherFormat(filePath)
     rslt = []
     products = []
     try:
@@ -99,8 +103,8 @@ def processData(filePath):
 
         products = df.Material.unique().tolist()
         products.sort()
-        rslt = [[] for i in range(len(products)*len(products))]
-        #TODO: Wissen welches Produkt davor war
+        rslt = [[] for i in range(len(products) * len(products))]
+        # TODO Wissen welches Produkt davor war
         oldProd = 'A'
         for index, row in df.iterrows():
             i = len(products) * products.index(oldProd)
@@ -111,23 +115,51 @@ def processData(filePath):
 
     except Exception:
         sg.popup_error("Could not open/read file:", filePath)
-
+    products.sort()
     return rslt, products
 
-def readDefaults(products):
 
-    ldefaults = {}
+def processDataOtherFormat(filePath):
+    products = []
+    dictFrom = {}
+    try:
+        df = pd.read_csv(filePath, sep=";")
+        fromMats = np.sort(df.iloc[:, 0].unique())
+        # prods = pd.unique(df[['Col1', 'Col2']].values.ravel('K'))
+        for mat in fromMats:
+            dictFrom[mat] = {}
+
+        for index, row in df.iterrows():
+            products.append(row[1])
+            if row[1] in dictFrom[row[0]]:
+                dictFrom[row[0]][row[1]].append(row[2])
+            else:
+                dictFrom[row[0]][row[1]] = [row[2]]
+
+    except Exception:
+        sg.popup_error("Could not open/read file:", filePath)
+    products.sort()
+    return dictFrom, pd.unique(products)
+
+
+def readDefaults(products):
+    dictDefaults = {}
     if len(products) > 0:
         df = pd.read_csv(DEFAULTS_FILEPATH, sep=";")
-        for index, row in df.iterrows():
-            ldefaults[row.From+row.To] = row.Duration
-            try:
-                newI = len(products) * products.index(row.From)+products.index(row.To)
-                ldefaults[newI] = row.Duration
-            except ValueError:
-                continue
 
-    return ldefaults
+        fromMats = np.sort(df.iloc[:, 0].unique())
+        for mat in fromMats:
+            dictDefaults[mat] = {}
+
+        for index, row in df.iterrows():
+            if row.To in dictDefaults[row.From]:
+                dictDefaults[row.From][row.To].append(row.Duration)
+            else:
+                dictDefaults[row.From][row.To] = [row.Duration]
+
+    #return {}
+    return dictDefaults
+
 
 def onInit():
     # read settings
@@ -137,7 +169,13 @@ def onInit():
     data, products = processData(settings["filePath"])
     defaultVals = readDefaults(products)
 
-    return settings, data, products, defaultVals
+    if len(defaultVals) == 0:
+        defaultVals = data
+
+    keys = np.array(list(data.keys()))
+
+    return settings, data, products, keys, defaultVals
+
 
 def draw_figure(canvas, figure):
     figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
@@ -145,24 +183,26 @@ def draw_figure(canvas, figure):
     figure_canvas_agg.get_tk_widget().pack(side='top', fill='both', expand=1)
     return figure_canvas_agg
 
+
 def getFigureMaster():
-
-    n = len(products)
-
+    n = len(keys)
+    m = len(products)
     if n > 0:
-        fig, ax = plt.subplots(n,n, figsize=(7,6))
+        fig, ax = plt.subplots(n, m, figsize=(12, 10))
 
-        for i in range(0, n):
-            for j in range(0, n):
+        #for i in range(0, n):
+        for i, productFrom in enumerate(keys, 0):
+            for j, productTo in enumerate(products, 0):
 
-                if i != j:
-                    dataIndex = i * n + j
 
-                    setHistogram(ax[i][j], ruestData[dataIndex], defaults[dataIndex])
+                if productFrom != productTo and productTo in ruestData[productFrom]:
+                    #dataIndex = i * n + j
+
+                    setHistogram(ax[i][j], ruestData[productFrom][productTo], defaults[productFrom][productTo])
 
                     # calculate divergence
-                    mean = np.array(ruestData[dataIndex]).mean()
-                    d = defaults[dataIndex]
+                    mean = np.array(ruestData[productFrom][productTo]).mean()
+                    d = defaults[productFrom][productTo]
                     percent = (mean - d) / mean * 100
 
                     if (percent <= settings["dg"]):
@@ -179,27 +219,29 @@ def getFigureMaster():
                     ax[i][j].yaxis.set_ticks([])
 
                 if i == 0:
-                    ax[i][j].set_title('Product ' + products[j], size=12)
+                    ax[i][j].set_title(productTo, size=7)
                 if j == 0:
-                    ax[i][j].set_ylabel('Product ' + products[i], size=12)
+                    ax[i][j].set_ylabel(productFrom, size=7)
     else:
         fig, ax = plt.subplots(1, 1, figsize=(7, 7))
     fig.align_ylabels(ax[:, 0])
     fig.tight_layout()
     return fig
 
-def getFigureDetail(fromP,toP):
-    fig = Figure(figsize=(6,5))
+
+def getFigureDetail(fromP, toP):
+    fig = Figure(figsize=(6, 5))
     ax = fig.add_subplot(111)
-    if len(products) > 0:
-        dataIndex = len(products) * products.index(fromP) + products.index(toP)
-        setHistogram(ax, ruestData[dataIndex], defaults[dataIndex], False)
+    if len(products) > 0 and toP in ruestData[fromP]:
+        setHistogram(ax, ruestData[fromP][toP], defaults[fromP][toP], False)
         fig.tight_layout()
 
     return fig
 
+
 def major_formatter(x, pos):
     return "%.2f" % x
+
 
 def setHistogram(ax, data, defaultVal, isMaster=True):
     if settings["showAbsFrequencies"]:
@@ -226,38 +268,41 @@ def setHistogram(ax, data, defaultVal, isMaster=True):
 
         maxVal = maxVal + 15 - maxVal % 15
 
-        ax.set_xlim(left=minVal, right=maxVal+1)
-        ax.set_xticks(range(minVal, maxVal+1, 15))
+        ax.set_xlim(left=minVal, right=maxVal + 1)
+        ax.set_xticks(range(minVal, maxVal + 1, 15))
+
 
 def updateDetail(fromP, toP):
     figDetail.clear()
     ax = figDetail.add_subplot(111)
-    if len(products) > 0:
-        dataIndex = len(products) * products.index(fromP) + products.index(toP)
-        setHistogram(ax, ruestData[dataIndex], defaults[dataIndex], False)
+    if len(products) > 0 and fromP in ruestData and toP in ruestData[fromP]:
+        setHistogram(ax, ruestData[fromP][toP], defaults[fromP][toP], False)
 
 
 if __name__ == '__main__':
 
-    settings, ruestData, products, defaults = onInit()
+    settings, ruestData, products, keys, defaults = onInit()
 
     sg.theme(THEME)
     menu_def = [['Edit', ['Settings']]]
 
+    #masterCol = [[sg.Column([[sg.Canvas(key='-CANVAS_MASTER-')]], key="-MASTERCOL-", size=(700, 700), scrollable=True)]]
     masterCol = [[sg.Canvas(key='-CANVAS_MASTER-')]]
     detailCol = [[sg.Canvas(key='-CANVAS_DETAIL-')],
-                 [sg.Text("Rüsten von:",size=(15,1),pad=((100,45),0)), sg.Text("Rüsten auf:",size=(15,1))],
-                 [sg.InputCombo(products, default_value=products[0], key="-COMBO_FROM-", size=(12,1), pad=((100,70),0), enable_events=True),
-                  sg.InputCombo(products, default_value=products[1], key="-COMBO_TO-", size=(12,1), enable_events=True)]
+                 [sg.Text("Rüsten von:", size=(15, 1), pad=((100, 45), 0)), sg.Text("Rüsten auf:", size=(15, 1))],
+                 [sg.InputCombo(keys, default_value=keys[0], key="-COMBO_FROM-", size=(20, 1),
+                                pad=((100, 70), 0), enable_events=True),
+                  sg.InputCombo(products, default_value=products[1], key="-COMBO_TO-", size=(20, 1),
+                                enable_events=True)]
                  ]
 
     layout = [
         [sg.Menu(menu_def, tearoff=False)],
-         [sg.Column(masterCol),
+        [sg.Column(masterCol),
          sg.VSeperator(),
          sg.Column(detailCol)]
     ]
-    window = sg.Window(TITLE, layout, size=(1280, 720), finalize=True)
+    window = sg.Window(TITLE, layout, size=(1900, 1080), finalize=True)
 
     figMaster = getFigureMaster()
     masterCanvas = draw_figure(window['-CANVAS_MASTER-'].TKCanvas, figMaster)
@@ -265,7 +310,7 @@ if __name__ == '__main__':
     fromP = window["-COMBO_FROM-"].DefaultValue
     toP = window["-COMBO_TO-"].DefaultValue
 
-    figDetail = getFigureDetail(fromP,toP)
+    figDetail = getFigureDetail(fromP, toP)
     detailCanvas = draw_figure(window['-CANVAS_DETAIL-'].TKCanvas, figDetail)
 
     while True:
@@ -292,9 +337,8 @@ if __name__ == '__main__':
             settingsChanged = False
             masterCanvas.figure = getFigureMaster()
             masterCanvas.draw()
-            
+
             updateDetail(window["-COMBO_FROM-"].DefaultValue, window['-COMBO_TO-'].DefaultValue)
             detailCanvas.draw()
 
     window.close()
-

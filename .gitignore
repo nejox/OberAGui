@@ -1,5 +1,7 @@
 *.txt
-
+*.pdf
+*.png
+PySimpleGUI-Master/
 __pycache__/
 *.py[cod]
 *$py.class
