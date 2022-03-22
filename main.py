@@ -115,7 +115,7 @@ def processData(filePath):
 
     except Exception:
         sg.popup_error("Could not open/read file:", filePath)
-    products.sort()
+
     return rslt, products
 
 
@@ -123,7 +123,7 @@ def processDataOtherFormat(filePath):
     products = []
     dictFrom = {}
     try:
-        df = pd.read_csv(filePath, sep=";")
+        df = pd.read_csv(filePath, sep=";", nrows=10)
         fromMats = np.sort(df.iloc[:, 0].unique())
         # prods = pd.unique(df[['Col1', 'Col2']].values.ravel('K'))
         for mat in fromMats:
@@ -157,7 +157,7 @@ def readDefaults(products):
             else:
                 dictDefaults[row.From][row.To] = [row.Duration]
 
-    #return {}
+    return {}
     return dictDefaults
 
 
@@ -190,14 +190,11 @@ def getFigureMaster():
     if n > 0:
         fig, ax = plt.subplots(n, m, figsize=(12, 10))
 
-        #for i in range(0, n):
         for i, productFrom in enumerate(keys, 0):
             for j, productTo in enumerate(products, 0):
 
 
                 if productFrom != productTo and productTo in ruestData[productFrom]:
-                    #dataIndex = i * n + j
-
                     setHistogram(ax[i][j], ruestData[productFrom][productTo], defaults[productFrom][productTo])
 
                     # calculate divergence
@@ -257,8 +254,11 @@ def setHistogram(ax, data, defaultVal, isMaster=True):
             ax.set_ylabel(DETAIL_YAXIS_LABEL_REL, size=12)
             ax.set_xlabel(DETAIL_XAXIS_LABEL, size=12)
 
-    ax.xaxis.set_major_locator(MultipleLocator(10))
+    #ax.xaxis.set_major_locator(MultipleLocator(10))
+    ax.xaxis.set_ticks(data)
+
     ax.axvline(defaultVal, color="cyan", linewidth=2)
+
     if settings["centerDiagrams"]:
         maxVal = max(np.amax(ruestData))
         list = np.amin(ruestData)

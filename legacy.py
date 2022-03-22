@@ -1,4 +1,4 @@
-DATA_FILEPATH = "data/genData.csv"
+DATA_FILEPATH = "data/genData2.csv"
 
 from numpy.random import seed
 from numpy.random import randint
@@ -26,7 +26,7 @@ def generateData():
                 if len(data) > 0 and data[-1][:2] == (products[keyFrom], products[keyTo]):
                      continue
                 break
-
+        print(keyFrom, keyTo)
         prodFrom = products[keyFrom]
         prodTo = products[keyTo]
         timeVal = randint(minTime, maxTime)
