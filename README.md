@@ -1,9 +1,13 @@
-# OberAGui
+# RuestViewer
 
-Small Python GUI for the OberA Project to visualize different Arming Procedures of products and stuff.
+This is a simple GUI to read a .csv-File and generate the RuestMatrix from it.
 
-## Right now it can only read .csv-Files given in the settings.json or configured in the GUI directly.
-### Those Files need to have format:
-Material;Duration;Timestamp
+Install via pip with: `pip install . `
+
+Input Files should be stored in "data/" and can be loaded then specified in the settings.
+The CSV-Files should have the following structure:
+"Material A"; "Material B"; "Duration"
+
+Default Values are stored in "settings/defaultValues.csv" and are automatically read when the program is started.
 
 
