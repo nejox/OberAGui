@@ -26,6 +26,7 @@ class GuiManager:
         self.data = {}
         self.products = []
         self.defaults = {}
+        self.keys = []
         self.settingsChanged = False
         self.pathChanged = False
 
@@ -51,9 +52,9 @@ class GuiManager:
             detailCol = [[sg.Canvas(key='-CANVAS_DETAIL-')],
                               [sg.Text("Rüsten von:", size=(15, 1), pad=((100, 45), 0)),
                                sg.Text("Rüsten auf:", size=(15, 1))],
-                              [sg.InputCombo(self.keys, default_value=self.keys[0], key="-COMBO_FROM-", size=(20, 1),
+                              [sg.InputCombo(list(self.keys), default_value=self.keys[0], key="-COMBO_FROM-", size=(20, 1),
                                              pad=((100, 70), 0), enable_events=True),
-                               sg.InputCombo(self.products, default_value=self.products[1], key="-COMBO_TO-", size=(20, 1),
+                               sg.InputCombo(list(self.products), default_value=self.products[1], key="-COMBO_TO-", size=(20, 1),
                                              enable_events=True)]
                               ]
         else:
@@ -130,11 +131,12 @@ class GuiManager:
                         ax[i][j].set_ylabel(productFrom, size=7)
 
                     ax[i][j].tick_params(axis='both', which='major', labelsize=7)
-        else:
-            fig, ax = plt.subplots(1, 1, figsize=(7, 7))
 
-        fig.align_ylabels(ax[:, 0])
-        fig.tight_layout()
+                    fig.align_ylabels(ax[:, 0])
+                    fig.tight_layout()
+        else:
+            fig, ax = plt.subplots(1, 1, figsize=(12, 10))
+
         return fig
 
     def setHistogram(self, ax, data, defaultVal, isMaster=True):
@@ -288,10 +290,13 @@ class GuiManager:
 
             if self.pathChanged:
                 self.pathChanged = False
-                self.data, self.products, self.keys = DataProcessor.processDataFromCSV(self.settings["filePath"])
+                try:
+                    self.data, self.products, self.keys = DataProcessor.processDataFromCSV(self.settings["filePath"])
+                except Exception:
+                    sg.popup_error("Could not open/read file:", self.settings["filePath"])
                 #self.defaults = DataProcessor.readDefaults(DEFAULTS_FILEPATH, self.products)
-                window["-COMBO_FROM-"].update(value=self.products[0], values=self.products)
-                window["-COMBO_TO-"].update(value=self.products[1], values=self.products)
+                window["-COMBO_FROM-"].update(value=self.products[0], values=list(self.products))
+                window["-COMBO_TO-"].update(value=self.products[1], values=list(self.products))
 
             if self.settingsChanged:
                 self.settingsChanged = False

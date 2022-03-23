@@ -10,9 +10,7 @@ def generateData(dataPath):
     minTime = 15
     maxTime = 120
 
-    seed(1)
-
-    products = ['Z', 'B', 'C', 'D', 'E']
+    products = ['A', 'B', 'C', 'D', 'E']
     data = []
 
     for i in range(0, n_samples):
