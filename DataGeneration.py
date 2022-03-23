@@ -1,5 +1,3 @@
-DATA_FILEPATH = "data/genData2.csv"
-
 from numpy.random import seed
 from numpy.random import randint
 import pandas as pd
@@ -7,14 +5,14 @@ import numpy as np
 from datetime import datetime
 
 
-def generateData():
+def generateData(dataPath):
     n_samples = 100
     minTime = 15
     maxTime = 120
 
     seed(1)
 
-    products = ['A', 'B', 'C', 'D', 'E']
+    products = ['Z', 'B', 'C', 'D', 'E']
     data = []
 
     for i in range(0, n_samples):
@@ -26,13 +24,12 @@ def generateData():
                 if len(data) > 0 and data[-1][:2] == (products[keyFrom], products[keyTo]):
                      continue
                 break
-        print(keyFrom, keyTo)
         prodFrom = products[keyFrom]
         prodTo = products[keyTo]
         timeVal = randint(minTime, maxTime)
         data.extend([(prodFrom, prodTo, timeVal)])
     df = pd.DataFrame(data, columns=["Programm A", "Programm B", "Zeitdauer in Minuten"])
-    df.to_csv(DATA_FILEPATH, sep=";", index=False)
+    df.to_csv(dataPath, sep=";", index=False)
     return df
 
 
@@ -50,5 +47,5 @@ def convertData(path):
     print("csv written")
 
 
-#convertData("C:/Users/Jochen/PycharmProjects/HIWIGui/data/AMP Daten/Daten für Rüstmatrix.xlsx")
-generateData()
+DATA_FILEPATH = "data/genData_"+datetime.now().strftime("%d_%m_%Y_%H_%M_%S")+".csv"
+generateData(DATA_FILEPATH)
