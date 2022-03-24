@@ -18,7 +18,6 @@ setup(
     'matplotlib',
     'numpy',
     'pandas',
-    'package',
     'PySimpleGUI'
   ]
 )
