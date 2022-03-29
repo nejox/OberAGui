@@ -1,8 +1,10 @@
 # RuestViewer
 
-This is a simple GUI to read a .csv-File and generate the RuestMatrix from it.
+This is a simple GUI to read a .csv-File and visualize different Arming Procedures of products.
 
-Install via pip with: `pip install . `
+Execute the command in the console to install via pip with: `pip install . `
+
+Run GUI with: `python main.py`
 
 Input Files should be stored in "data/" and can be loaded then specified in the settings.
 The CSV-Files should have the following structure:

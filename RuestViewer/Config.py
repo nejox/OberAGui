@@ -1,6 +1,6 @@
 # ------------------General-----------------------------
 THEME = "DarkGrey14"
-TITLE = "OberA: Ruest Viewer"
+TITLE = "RuestViewer"
 # ------------------Diagram stuff-----------------------
 DETAIL_XAXIS_LABEL = "Rüstzeit"
 DETAIL_YAXIS_LABEL_ABS = "abs. Häufigkeit"

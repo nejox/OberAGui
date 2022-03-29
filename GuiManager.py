@@ -40,7 +40,7 @@ class GuiManager:
             sg.popup_error("Could not open/read file:", self.settings["filePath"])
 
         try:
-            self.defaults = DataProcessor.readDefaults(DEFAULTS_FILEPATH, self.products)
+            self.defaults = DataProcessor.readDefaultsFromCSV(DEFAULTS_FILEPATH, self.products)
         except Exception:
             sg.popup("Could not read Default Values")
 
@@ -51,7 +51,7 @@ class GuiManager:
         if len(self.keys) > 0 and len(self.products) > 0:
             detailCol = [[sg.Canvas(key='-CANVAS_DETAIL-')],
                               [sg.Text("Rüsten von:", size=(15, 1), pad=((100, 45), 0)),
-                               sg.Text("Rüsten auf:", size=(15, 1))],
+                               sg.Text("Rüsten auf:", size=(15, 1), pad=((60, 45), 0))],
                               [sg.InputCombo(list(self.keys), default_value=self.keys[0], key="-COMBO_FROM-", size=(20, 1),
                                              pad=((100, 70), 0), enable_events=True),
                                sg.InputCombo(list(self.products), default_value=self.products[1], key="-COMBO_TO-", size=(20, 1),
@@ -161,11 +161,11 @@ class GuiManager:
             ax.axvline(defaultVal, color="cyan", linewidth=2)
 
         if self.settings["centerDiagrams"]:
-            maxVal = max(np.amax(self.data))
-            list = np.amin(self.data)
+            valueList = []
+            [valueList.extend(values) for firstLvl in self.data.values() for values in firstLvl.values()]
+            maxVal = max(valueList)
+            #minVal = min(valueList)
             minVal = 0
-            if list:
-                minVal = min(np.amin(self.data))
 
             maxVal = maxVal + 15 - maxVal % 15
 
@@ -226,7 +226,7 @@ class GuiManager:
             [sg.InputText(default_text=self.settings['filePath'], key='-INPUT_FILE-'), sg.FileBrowse()],
             [sg.Checkbox("scaled Diagrams", key="-INPUT_CENTERING-", default=self.settings["centerDiagrams"])],
             [sg.Checkbox("show abs. Frequencies", key="-INPUT_FREQ-", default=self.settings["showAbsFrequencies"])],
-            [sg.Frame("Colors of Deviations", frameLayout)],
+            [sg.Frame("Degree of deviation", frameLayout)],
             [sg.Text("                                                          "), sg.Button('Apply'),
              sg.Button('Cancel')]
         ]

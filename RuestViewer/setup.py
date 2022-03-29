@@ -9,10 +9,9 @@ setup(
   author='Jochen Schmidt',
   author_email='schmidtjochen@gmx.net',
   package_data={  # Optional
-        'data': [],
-        'settings':['settings.json'],
+        'data': ['exampleData.csv'],
+        'settings':['settings.json', 'defaultValues.csv'],
     },
-  package_dir={"": "src"},
   packages=setuptools.find_packages(where="src"),
   install_requires=[
     'matplotlib',

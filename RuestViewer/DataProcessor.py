@@ -1,16 +1,19 @@
 import pandas as pd
 import numpy as np
 
+
 class DataProcessor:
     """
         Class for managing the data processing
     """
 
+    def __init__(self):
+        pass
+
     @staticmethod
     def processDataFromCSV(filePath):
         products = []
         dictFrom = {}
-
 
         df = pd.read_csv(filePath, sep=";")
 
@@ -33,7 +36,7 @@ class DataProcessor:
         return dictFrom, pd.unique(products), keys
 
     @staticmethod
-    def readDefaults(DEFAULTS_FILEPATH, materials):
+    def readDefaultsFromCSV(DEFAULTS_FILEPATH, materials):
         dictDefaults = {}
         if len(materials) > 0:
             df = pd.read_csv(DEFAULTS_FILEPATH, sep=";")
